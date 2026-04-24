@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 # noinspection PyPackageRequirements
 from sqlalchemy import Index
-from sqlmodel import Field, Relationship, Session, SQLModel, create_engine
+from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
 
 from sbom_cli.parsers.types import ParsedDocument
 
@@ -172,3 +172,57 @@ def insert_parsed(session: Session, parsed: ParsedDocument) -> Document:
     session.refresh(doc)
 
     return doc
+
+
+def query_by_component(
+    session: Session, name: str, version: str | None = None
+) -> list[tuple[Document, Component, list[str]]]:
+    """Find every component matching a name (and optional exact version).
+
+    Args:
+        session: An active SQLModel session bound to the target engine.
+        name: Exact component name to match (case-sensitive).
+        version: Optional exact version string. When supplied, only rows with
+            this version are returned; when `None`, all versions match.
+
+    Returns:
+        A list of `(document, component, licenses)` tuples. Each tuple groups
+        a component with its parent document and the resolved list of license
+        strings — convenient for table or JSON rendering.
+    """
+    stmt = select(Component).where(Component.name == name)
+
+    if version is not None:
+        stmt = stmt.where(Component.version == version)
+
+    components: list[Component] = session.exec(stmt).all()
+
+    return [(c.document, c, [_license.license for _license in c.licenses]) for c in components]
+
+
+def query_by_license(session: Session, license: str) -> list[tuple[Document, Component, list[str]]]:
+    """Find every component declaring a given license string.
+
+    Match is exact against the stored license value; SPDX ids and free-form
+    names live in the same column, so callers should pass the same form they
+    expect to find (e.g. `"MIT"`, `"GPL-3.0-or-later"`).
+
+    Args:
+        session: An active SQLModel session bound to the target engine.
+        license: Exact license string to match (case-sensitive).
+
+    Returns:
+        A list of `(document, component, licenses)` tuples. The `licenses`
+        field always includes the queried license, plus any others the
+        component declares.
+    """
+
+    stmt = (
+        select(Component)
+        .join(ComponentLicense, ComponentLicense.component_id == Component.id)
+        .where(ComponentLicense.license == license)
+        .distinct()
+    )
+
+    components: list[Component] = session.exec(stmt).all()
+    return [(c.document, c, [_license.license for _license in c.licenses]) for c in components]
