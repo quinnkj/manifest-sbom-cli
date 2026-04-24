@@ -8,6 +8,7 @@ are stubs to be filled in by later commits.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -18,13 +19,81 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from sbom_cli import db, parsers
-from sbom_cli.db import Document
+from sbom_cli.db import Component, Document
 from sbom_cli.parsers import ParsedDocument
 
 app: typer.Typer = typer.Typer(
     help="Ingest CycloneDX/SPDX SBOMs and query them.",
     no_args_is_help=True,
 )
+
+_TABLE_HEADERS: list[str] = ["document", "source_path", "component", "version", "licenses"]
+
+
+def _results_to_rows(
+    results: Iterable[tuple[Document, Component, list[str]]],
+) -> list[dict[str, Any]]:
+    """Flatten query result tuples into JSON-ready dictionaries.
+
+    Args:
+        results: The `(document, component, licenses)` tuples returned by
+            the `db.query_by_*` helpers.
+
+    Returns:
+        One dict per input tuple, with keys suitable for table rendering.
+        `licenses` is preserved as a list so JSON consumers see structured data.
+    """
+    return [
+        {
+            "document": doc.name,
+            "source_path": doc.source_path,
+            "format": doc.format,
+            "component": comp.name,
+            "version": comp.version,
+            "purl": comp.purl,
+            "licenses": licenses,
+        }
+        for doc, comp, licenses in results
+    ]
+
+
+def _render_table(rows: list[dict[str, Any]]) -> str:
+    """Render rows as a left-aligned fixed-width text table.
+
+    Only the columns listed in `_TABLE_HEADERS` are shown; `purl` and
+    `format` are omitted to keep the table narrow. The `licenses` list is
+    joined with `", "`.
+
+    Args:
+        rows: The dicts produced by `_results_to_rows`.
+
+    Returns:
+        A multi-line string ready for `typer.echo`. Returns `"(no matches)"`
+        when `rows` is empty.
+    """
+    if not rows:
+        return "(no matches)"
+
+    widths: dict[str, int] = {h: len(h) for h in _TABLE_HEADERS}
+    display: list[dict[str, str]] = []
+    for r in rows:
+        cells: dict[str, str] = {
+            "document": r["document"] or "",
+            "source_path": r["source_path"],
+            "component": r["component"],
+            "version": r["version"] or "",
+            "licenses": ", ".join(r["licenses"]) or "",
+        }
+        for h in _TABLE_HEADERS:
+            widths[h] = max(widths[h], len(cells[h]))
+        display.append(cells)
+
+    lines: list[str] = [
+        "  ".join(h.ljust(widths[h]) for h in _TABLE_HEADERS),
+        "  ".join("-" * widths[h] for h in _TABLE_HEADERS),
+    ]
+    lines.extend("  ".join(d[h].ljust(widths[h]) for h in _TABLE_HEADERS) for d in display)
+    return "\n".join(lines)
 
 
 @app.command()
@@ -68,12 +137,42 @@ def query(
         typer.Option("--db", help="SQLite path (default: ./sbom.db or $SBOM_DB)."),
     ] = None,
 ) -> None:
-    """Query stored SBOMs by component (optionally version) or by license."""
-    typer.echo(
-        "`query`: not yet implemented "
-        f"(component={component}, version={version}, license={license}, "
-        f"db={db_path})"
-    )
+    """Query stored SBOMs by component (optionally version) or by license.
+
+    Exactly one of `--component` or `--license` must be supplied; `--version`
+    is only valid alongside `--component`. Results are rendered as a
+    fixed-width text table.
+
+    Args:
+        component: Component name to look up. Mutually exclusive with `license`.
+        version: Optional exact version to narrow a component query.
+        license: License string to look up. Mutually exclusive with `component`.
+        db_path: Override the default SQLite path. Falls back to
+            `db.default_db_path()` when omitted.
+
+    Raises:
+        typer.BadParameter: If neither or both of `component`/`license` are
+            given, or if `version` is supplied without `component`.
+    """
+
+    if (component is None) == (license is None):
+        raise typer.BadParameter("Provide exactly one of --component or --license.")
+
+    if version is not None and component is None:
+        raise typer.BadParameter("--version requires --component.")
+
+    engine: Engine = db.make_engine(db_path)
+
+    with Session(engine) as session:
+        if component is not None:
+            results = db.query_by_component(session, component, version)
+        else:
+            assert license is not None
+            results = db.query_by_license(session, license)
+
+        rows: list[dict[str, Any]] = _results_to_rows(results)
+
+    typer.echo(_render_table(rows))
 
 
 if __name__ == "__main__":
