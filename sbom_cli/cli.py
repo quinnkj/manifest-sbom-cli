@@ -1,9 +1,8 @@
 """Typer CLI for the `sbom-cli` console script.
 
-Defines two subcommands — `ingest` and `query` — that wrap the parser and
-persistence layers. T
+Defines two subcommands — `ingest` and `query` — that wrap the parser and persistence layers.
 
-he Typer `app` object is the entry point referenced by `[project.scripts]` in `pyproject.toml`.
+The Typer `app` object is the entry point referenced by `[project.scripts]` in `pyproject.toml`.
 """
 
 from __future__ import annotations
