@@ -1,7 +1,7 @@
 [project]
 name = "manifest-sbom-cli"
 version = "0.1.0"
-description = "Ingest CycloneDX and SPDX 3.0 SBOMs into SQLite and query them by component or license."
+description = "Ingest CycloneDX SBOMs into SQLite and query them by component or license."
 requires-python = ">=3.14"
 dependencies = [
     "typer>=0.12",

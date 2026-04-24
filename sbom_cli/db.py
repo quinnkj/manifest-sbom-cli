@@ -25,10 +25,9 @@ class Document(SQLModel, table=True):
     Attributes:
         id: Auto-assigned primary key.
         source_path: The on-disk path of the file when it was ingested.
-        format: The detected format (`"cyclonedx"` or `"spdx"`).
+        format: The detected format (currently always `"cyclonedx"`).
         spec_version: The format's spec version, when present in the source.
-        serial_number: A document-scoped identifier — CycloneDX `serialNumber`
-            or SPDX `SpdxDocument.spdxId`.
+        serial_number: The CycloneDX `serialNumber` of the document.
         name: The document's top-level name, when present in the source.
         ingested_at: UTC timestamp set at insertion time.
         components: Cascade-deleted child components.
@@ -79,14 +78,14 @@ class Component(SQLModel, table=True):
 class ComponentLicense(SQLModel, table=True):
     """One license declared by a `Component`.
 
-    A component may have multiple rows here (CycloneDX `licenses[]` or SPDX
-    multiple `hasDeclaredLicense`/`hasConcludedLicense` relationships).
+    A component may have multiple rows here (CycloneDX `licenses[]` may carry
+    multiple entries per component).
 
     Attributes:
         id: Auto-assigned primary key.
         component_id: Foreign key to `Component.id`.
-        license: License string — SPDX id, name, or compound expression,
-            stored verbatim from the source SBOM.
+        license: License string — SPDX identifier, free-form name, or compound
+            expression, stored verbatim from the source SBOM.
         component: Back-reference to the owning `Component`.
     """
 
@@ -197,15 +196,18 @@ def query_by_component(
 
     components: list[Component] = session.exec(stmt).all()
 
-    return [(c.document, c, [_license.license for _license in c.licenses]) for c in components]
+    return [
+        (component.document, component, [_license.license for _license in component.licenses])
+        for component in components
+    ]
 
 
 def query_by_license(session: Session, license: str) -> list[tuple[Document, Component, list[str]]]:
     """Find every component declaring a given license string.
 
-    Match is exact against the stored license value; SPDX ids and free-form
-    names live in the same column, so callers should pass the same form they
-    expect to find (e.g. `"MIT"`, `"GPL-3.0-or-later"`).
+    Match is exact against the stored license value; SPDX identifiers and
+    free-form names live in the same column, so callers should pass the same
+    form they expect to find (e.g. `"MIT"`, `"GPL-3.0-or-later"`).
 
     Args:
         session: An active SQLModel session bound to the target engine.
@@ -225,4 +227,7 @@ def query_by_license(session: Session, license: str) -> list[tuple[Document, Com
     )
 
     components: list[Component] = session.exec(stmt).all()
-    return [(c.document, c, [_license.license for _license in c.licenses]) for c in components]
+    return [
+        (component.document, component, [_license.license for _license in component.licenses])
+        for component in components
+    ]

@@ -1,4 +1,4 @@
-"""sbom-cli: ingest CycloneDX 1.6/SPDX 3.0 SBOMs into SQLite and query them.
+"""sbom-cli: ingest CycloneDX SBOMs into SQLite and query them.
 
 Public submodules:
     cli:     The Typer application exposed as the `sbom-cli` console script.

@@ -1,7 +1,7 @@
 """Format-agnostic data shapes shared between parsers and persistence.
 
-Each format parser (`cyclonedx`, `spdx`) is responsible for translating its
-raw JSON into a `ParsedDocument`, so that `db` insertion does not need to
+Each format parser (currently just `cyclonedx`) is responsible for translating
+its raw JSON into a `ParsedDocument`, so that `db` insertion does not need to
 know anything about the source format.
 """
 
@@ -31,17 +31,16 @@ class ParsedComponent:
 
 @dataclass
 class ParsedDocument:
-    """An SBOM document and its components, normalized across formats.
+    """An SBOM document and its components.
 
     Attributes:
         source_path: The on-disk path of the file that was parsed.
-        format: The detected SBOM format (`"cyclonedx"` or `"spdx"`).
-        spec_version: The format's spec version (e.g. `"1.6"` or `"3.0"`),
-            or `None` if not declared in the document.
-        serial_number: A document-scoped identifier — CycloneDX `serialNumber`
-            or SPDX `SpdxDocument.spdxId`. May be `None`.
-        name: The document's top-level name (CycloneDX `metadata.component.name`
-            or SPDX `SpdxDocument.name`). May be `None`.
+        format: The detected SBOM format (currently always `"cyclonedx"`).
+        spec_version: The format's spec version (e.g. `"1.6"`), or `None` if
+            not declared in the document.
+        serial_number: The CycloneDX `serialNumber`. May be `None`.
+        name: The document's top-level name from `metadata.component.name`.
+            May be `None`.
         components: All software components discovered in the document.
     """
 

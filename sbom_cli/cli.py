@@ -1,8 +1,9 @@
 """Typer CLI for the `sbom-cli` console script.
 
-Skeleton: defines the CLI surface (subcommands and options) so the entry
-point is wired up and `sbom-cli --help` is meaningful. The command bodies
-are stubs to be filled in by later commits.
+Defines two subcommands — `ingest` and `query` — that wrap the parser and
+persistence layers. T
+
+he Typer `app` object is the entry point referenced by `[project.scripts]` in `pyproject.toml`.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from sbom_cli.db import Component, Document
 from sbom_cli.parsers import ParsedDocument
 
 app: typer.Typer = typer.Typer(
-    help="Ingest CycloneDX/SPDX SBOMs and query them.",
+    help="Ingest CycloneDX SBOMs and query them.",
     no_args_is_help=True,
 )
 

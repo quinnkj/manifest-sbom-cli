@@ -1,6 +1,6 @@
 # sbom-cli
 
-A small CLI for ingesting JSON SBOMs (`CycloneDX 1.6` and `SPDX 3.0`) into a local SQLite database and querying them by
+A small CLI for ingesting `CycloneDX` JSON SBOMs into a local SQLite database and querying them by
 component or license.
 
 ## Install

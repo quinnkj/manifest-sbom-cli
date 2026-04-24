@@ -17,33 +17,22 @@ def detect_format(payload: dict[str, Any]) -> str:
     """Identify the SBOM format of a parsed JSON payload.
 
     Detection is purely structural: CycloneDX is identified by its
-    `bomFormat` discriminator, SPDX 3.0 by the presence of the SPDX 3.x
-    JSON-LD context URL.
+    `bomFormat` discriminator. SPDX is intentionally not supported.
 
     Args:
         payload: The parsed JSON object loaded from an SBOM file.
 
     Returns:
-        Either `"cyclonedx"` or `"spdx"`.
+        `"cyclonedx"`.
 
     Raises:
-        UnknownFormatError: If neither format is detected.
+        UnknownFormatError: If the payload is not a CycloneDX SBOM.
     """
 
     if payload.get("bomFormat") == "CycloneDX":
         return "cyclonedx"
 
-    context: Any = payload.get("@context")
-
-    if isinstance(context, str) and "spdx.org/rdf/3" in context:
-        return "spdx"
-
-    if isinstance(context, list) and any(
-        isinstance(c, str) and "spdx.org/rdf/3" in c for c in context
-    ):
-        return "spdx"
-
-    raise UnknownFormatError("Could not detect SBOM format (expected CycloneDX or SPDX 3.0).")
+    raise UnknownFormatError("Could not detect SBOM format (expected CycloneDX).")
 
 
 def parse(path: Path, payload: dict[str, Any]) -> ParsedDocument:
@@ -58,7 +47,7 @@ def parse(path: Path, payload: dict[str, Any]) -> ParsedDocument:
         A `ParsedDocument` whose `format` field reflects the detected format.
 
     Raises:
-        UnknownFormatError: If the payload does not match any supported format.
+        UnknownFormatError: If the payload is not a supported format.
     """
 
     fmt: str = detect_format(payload)
