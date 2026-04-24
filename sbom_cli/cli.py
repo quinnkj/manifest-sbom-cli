@@ -7,10 +7,19 @@ are stubs to be filled in by later commits.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
+
+# noinspection PyPackageRequirements
+from sqlalchemy import Engine
+from sqlmodel import Session
+
+from sbom_cli import db, parsers
+from sbom_cli.db import Document
+from sbom_cli.parsers import ParsedDocument
 
 app: typer.Typer = typer.Typer(
     help="Ingest CycloneDX/SPDX SBOMs and query them.",
@@ -26,7 +35,18 @@ def ingest(
     ] = None,
 ) -> None:
     """Parse an SBOM file and store its components."""
-    typer.echo(f"`ingest`: not yet implemented (would read {sbom_file}, db={db_path})")
+
+    payload: dict[str, Any] = json.loads(sbom_file.read_text())
+    parsed: ParsedDocument = parsers.parse(sbom_file, payload)
+    engine: Engine = db.make_engine(db_path)
+
+    with Session(engine) as session:
+        doc: Document = db.insert_parsed(session, parsed)
+
+    typer.echo(
+        f"Ingested {len(parsed.components)} components "
+        f"from {sbom_file} (format={parsed.format}, document_id={doc.id})"
+    )
 
 
 @app.command()
@@ -54,3 +74,11 @@ def query(
         f"(component={component}, version={version}, license={license}, "
         f"db={db_path})"
     )
+
+
+if __name__ == "__main__":
+    # Enables `python -m sbom_cli.cli ...` and PyCharm's "Module name" run/debug
+    # configuration (which sets breakpoints in this file's code path). The
+    # installed `sbom-cli` console script defined in pyproject.toml uses the
+    # `app` object directly and does not go through this branch.
+    app()
