@@ -1,7 +1,4 @@
-"""SQLModel schema and persistence helpers.
-
-Skeleton: schema and query helpers will be filled in by a later commit.
-"""
+"""SQLModel schema and persistence helpers."""
 
 import os
 from datetime import UTC, datetime
