@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+
+# IDE
+.idea/
+
+# Local SQLite databases
+*.sqlite
+*.sqlite3
+*.db
+
+# SBOM Exercise (Do not want publicly available)
+/Manifest_SBOM_CLI_Exercise.pdf
